@@ -1,0 +1,10 @@
+#ifndef SHORTTHROW_H
+#define SHORTTHROW_H
+#include "../ant.h"
+class Short_Throw:public Ant{
+    private:
+
+    public:
+        Short_Throw();
+};
+#endif

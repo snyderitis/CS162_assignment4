@@ -1,0 +1,339 @@
+#include "game.h"
+
+
+/*
+ *  Function: ants attack
+ *  Description: does all damage to bees based on ants in space
+ *  Parameters: none
+ *  Pre-conditions: bees should have already attacked
+ *  Post-conditinos: bees have damage done to them
+ */
+void Game::ants_attack()
+{
+    Colony c;
+    for(int k = 0; k < 10; k++) 
+    {
+        cout << "Space " << k+1 << endl;
+        for(int i = 0; i < spaces[k].get_ants().size(); i++)
+        {
+            cout << "Num ants: " << spaces[k].get_ants().size() << endl;
+            if(spaces[k].get_ant(i)->get_armor() > 0)
+            {
+                int damage = spaces[k].get_ant(i)->action(true,c);
+                if(damage > 0 && spaces[k].get_ant(i)->get_id() == 0)
+                    for(int j = 0; j < spaces[k].get_bees().size(); j++)
+                        spaces[k].get_bee(j)->take_damage(damage);
+                else if(damage > 0 && spaces[k].get_ant(i)->get_id() == 1)
+                {
+                    for(int l = 0; l < 2; l++)
+                    {
+                        if(l+k < 10)
+                        {
+                            cout << "Short throw\n";
+                            cout << spaces[k].get_ant(i)->get_name() << " attacking space: " << l+k+1 << endl;
+                            for(int j = 0; j < spaces[k+l].get_bees().size(); j++)
+                                spaces[k].get_bee(j)->take_damage(damage);
+                        }
+                    }
+                }
+                else if(damage > 0 && spaces[k].get_ant(i)->get_id() == 2)
+                {
+                    for(int l = 0; l < 4; l++)
+                    {
+                        if(l+k < 10)
+                        {
+                            cout << "Long throw\n";
+                            cout << spaces[k].get_ant(i)->get_name() << " attacking space: " << l+k+1 << endl;
+                            for(int j = 0; j < spaces[k+l].get_bees().size(); j++)
+                            {
+                                if(spaces[k].get_bee(j)->get_armor() > 0)
+                                {
+                                    cout << "Bee " << j << " Being attacked by long thrower\n";
+                                    spaces[k].get_bee(j)->take_damage(damage);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/*
+ *  Function: bees_attack
+ *  Description: go through all bee attack motions
+ *  Parameters: colony for ant actions (only harvester)
+ *  Pre-conditions: none
+ *  Post-conditions: ant damage taken, bees that attack action spent, ant           actions performed, all dead cleaned off
+ */
+void Game::bees_attack(Colony& c)
+{
+    for(int i = 0; i < 10; i++)
+    {
+        for(int j = 0; j < spaces[i].get_bees().size(); j++)
+        {
+            for(int k = 0; k < spaces[i].get_ants().size(); k++)
+            {
+                if(spaces[i].get_ant(k)->is_visible() && spaces[i].get_ant(k)->get_armor() > 0)
+                {
+                    cout << "Bee " << j << " on space " << i+1 << " has attacked " << spaces[i].get_ant(k)->get_id() << endl;
+                    spaces[i].get_ant(k)->take_damage(1);
+                    spaces[i].get_bee(j)->action_done();
+                    break;
+                }
+                
+            }
+        }
+        for(int j = 0; j < spaces[i].get_ants().size(); j++)
+        {
+            int damage = spaces[i].get_ant(j)->action(false,c);
+            if(damage > 0)
+                for(int k = 0; k < spaces[i].get_bees().size(); k++)
+                    spaces[i].get_bee(k)->take_damage(damage);
+        }
+        spaces[i].clean_dead();
+    }   
+}
+
+
+/*
+ *  Function: movement
+ *  Description: move all bees forward if they can
+ *  Parameters: none
+ *  Pre-conditions: all attacks have occured
+ *  Post-conditions: all bees that could advance have moved up one
+ */
+void Game::movement()
+{
+    for(int i = 1; i < 10; i++)//not checking 0
+    {
+        if(spaces[i].is_clear())
+        {
+            spaces[i-1].get_bees().clear();
+            for(int j = 0; j < spaces[i].get_bees().size(); j++)
+            {
+                if(!spaces[i].get_bee(j)->action_spent())
+                {
+                    spaces[i-1].add(spaces[i].get_bee(j));
+                    spaces[i].remove_bee(j);
+                }
+                else
+                    spaces[i].get_bee(j)->reset_action();
+            }
+        }
+    }
+}   
+
+
+/*
+ *  Function: print options
+ *  Description: print options for buying
+ *  Parameters: none
+ *  Pre-conditinos: none
+ *  Post-conditions: buy options printed to screen
+ */
+void Game::print_options()
+{
+    int count = 1;
+    cout << "Name   Food Cost\n";
+    cout << count++ << ": Harvester 2\n";
+    cout << count++ << ": Thrower 4\n";
+    cout << count++ << ": Fire 4\n";
+    cout << count++ << ": Long Thrower 3\n";
+    cout << count++ << ": Short Thrower 3\n";
+    cout << count++ << ": Wall 4\n";
+    cout << count++ << ": Ninja 6\n";
+    cout << count++ << ": Bodyguard 4\n";
+}   
+
+
+/*
+ *  Function: print options prompt user
+ *  Description: print the options for buying ants, prompt where they want to place them
+ *  Parameters: colony to check if they have enough food
+ *  Pre-conditions: user wants to make a new ant
+ *  Post-conditions: depending on if there is enough food, user makes an ant
+ */ 
+bool Game::prompt_user(Colony& c)
+{
+    string input = ""; 
+    do{
+        print_options();
+        cout << "Please input the number of the option (or type back): ";
+        getline(cin, input);
+        cout << "\n";
+    }while(!(is_int(input) && get_int(input) < 9 && get_int(input) > 0));// || to_lower(input) != "back");
+    if(to_lower(input) == "back")
+        return true;
+    if(create_place(c,get_int(input)))
+    {
+        return true;
+    }
+    return false;
+}
+
+
+/*
+ *  Function: create and place
+ *  Description: create the desired ant, check if there's enough food, prompt where ot place
+ *  Parameters: COlony to check food cost, int of ant they want
+ *  Pre-conditions: ant tyupe selected
+ *  Post-conditions: true if ant placed, false, if not placed
+ */
+bool Game::create_place(Colony& c, int input)
+{
+    bool good = false; 
+    Harvester* h; 
+    Thrower* t;
+    Fire* f;
+    Long_Thrower* lt;
+    Short_Throw* st;
+    Wall* w;
+    Ninja* n;
+    Bodyguard* b;
+    if(input == 1) h = new Harvester;
+    else if(input == 2) t = new Thrower;
+    else if(input == 3) f = new Fire;
+    else if(input == 4) lt = new Long_Thrower;
+    else if(input == 5) st = new Short_Throw;
+    else if(input == 6) w = new Wall;
+    else if(input == 7) n = new Ninja;
+    else  b = new Bodyguard;
+    switch(input)
+    {
+        case 1: 
+            if(c.get_food() >= h->get_cost()) good = place(h,c);
+            break;
+        case 2: 
+            if(c.get_food() >= t->get_cost()) good = place(t,c);
+            break;
+        case 3:
+            if(c.get_food() >= f->get_cost()) good = place(f,c);
+            break;
+        case 4:
+            if(c.get_food() >= lt->get_cost()) good = place(lt,c);
+            break;
+        case 5:
+            if(c.get_food() >= st->get_cost()) good = place(st,c);
+            break;
+        case 6:
+            if(c.get_food() >= w->get_cost()) good = place(w,c);
+            break;
+        case 7:
+            if(c.get_food() >= n->get_cost()) good = place(n,c);
+            break;
+        case 8:
+            if(c.get_food() >= b->get_cost()) good = place(b,c);
+            break;
+    } 
+    return good;    
+}
+
+
+/*
+ *  Function: do attacks
+ *  Description: attacking phase of game, all attacks and actions occur here
+ *  Parameters: colony (for harvester)
+ *  Pre-conditions: colony created, game underway
+ *  Post-conditions: none
+ */
+void Game::do_attacks(Colony& c)
+{
+      ants_attack();
+      bees_attack(c); 
+}
+
+
+/*
+ *  Function: Good place
+ *  Description: check if the place they want to set the ant is valid
+ *  Parameters: int, Ant*
+ *  Pre-conditions: input taken for which space
+ *  Post-conditions: return true if valid spot, false if invalid
+ */
+bool Game::valid_place(int input, Ant* a)
+{
+    if(spaces[input-1].is_clear())
+        return true;
+    if(spaces[input-1].get_ants().size() != 1)
+        return false;
+    if(spaces[input-1].get_ant(0)->get_id() == 4 || a->get_id() == 4)
+        return true;
+    return false;
+}
+
+
+/*
+ *  Function: place
+ *  Description: ask user where they want to place the ant, return false if they can't place it there
+ *  Parameters: ant pointer (polymorphic)
+ *  Pre-conditions: food supply good
+ *  Post-conditions: ant placed, return true, ant not placed, reprompt
+ */
+bool Game::place(Ant* a, Colony& c)
+{
+    string input = "";
+    do{
+        do{
+            cout << "Which space would you like to place it in(1-10)\n";
+            getline(cin, input);
+        }while(!(is_int(input) && (get_int(input) > 0 && get_int(input) < 11)));
+    } while(!valid_place(get_int(input),a));
+    spaces[get_int(input)-1].add(a);
+    c.subtract_food(a->get_cost());
+    return true;
+}
+
+
+/*
+ *  Function: turn
+ *  Description: runs the whole turn for the game
+ *  Parameters: colony
+ *  Pre-conditions: colony created, game started
+ *  Post-conditions: return true if queen hasn't been reached, else return false
+ */
+bool Game::turn(Colony& c)
+{
+    
+    spaces[9].add(new Bee);
+    this->print_board();
+    cout << "You have " << c.get_food() << " food left in your colony.\n";
+    if(yes_no_question("Would you like to buy a new ant?\n"))
+    {
+        prompt_user(c);
+    }
+    do_attacks(c);
+    movement();
+    if(spaces[0].get_bees().size() > 0)
+    {
+        cout << "A bee reached the queen! You lose!";
+        return false;
+    }
+    for(int i = 0; i < 10; i++)
+    {
+        if(spaces[i].get_bees().size() > 0)
+            return true;
+    }
+    cout << "You've won! no bees left on the board!\n";
+    return false;
+      
+}
+
+
+/*
+ *  Function: print board
+ *  Description: print the board to the screen so that the user knows what is in each space
+ *  Parameters: none
+ *  Pre-conditions: none
+ *  Post-conditions: board printed to screen
+ */
+void Game::print_board()
+{
+    for(int i = 0; i < 10; i++)
+    {
+        cout << "Space " << i+1 << ":\n";
+        spaces[i].list_bugs();
+    }
+}

@@ -1,0 +1,2 @@
+Fix segfault in place function logic in game.cpp
+Create a check win condition to return from game turn

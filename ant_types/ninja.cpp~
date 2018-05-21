@@ -1,0 +1,19 @@
+#include "ninja.h"
+
+Ninja::Ninja():Ant()
+{
+    cost = 6;
+    armor = 1;
+    visible = false;
+    block = false;
+    damage = 1;
+    id = 0;//id can be same as the thrower because they have similar damage and range
+}
+
+
+int Ninja::action(bool attack, Colony&c)
+{
+    if(attack)
+        return damage;
+    return 0;
+}
